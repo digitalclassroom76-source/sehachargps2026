@@ -2036,6 +2036,9 @@ function isPP(cls) { return cls === '0' || cls === 0 || cls === 'sishu'; }
 function save() { cloudSave(); }
 
 function bn(n) { return String(n).replace(/[\d.]/g, c => c==='.' ? '.' : '০১২৩৪৫৬৭৮৯'[c]); }
+// বাংলা সংখ্যা <-> ইংরেজি সংখ্যা কনভার্টার (IPEMIS ইনপুট বক্সের জন্য)
+function bnToEnDigits(s) { return String(s).replace(/[০-৯]/g, c => '০১২৩৪৫৬৭৮৯'.indexOf(c)); }
+function enToBnDigits(s) { return String(s).replace(/[0-9]/g, c => '০১২৩৪৫৬৭৮৯'[c]); }
 function bnDate(d) {
   if (!d) return '—';
   const p = d.split('-');
@@ -3266,8 +3269,21 @@ function ipemisOnInput(cls, field) {
   const gEl = document.getElementById(`ip-g-${cls}`);
   const tEl = document.getElementById(`ip-t-${cls}`);
 
-  const b = parseInt(bEl ? bEl.value : 0) || 0;
-  const g = parseInt(gEl ? gEl.value : 0) || 0;
+  // যে বক্সে এইমাত্র টাইপ হলো, শুধু সেটাকেই বাংলা সংখ্যায় নরম্যালাইজ করি
+  const activeEl = field === 'b' ? bEl : gEl;
+  if (activeEl) {
+    const digitsOnly = bnToEnDigits(activeEl.value).replace(/[^\d]/g, ''); // ইংরেজি হিসেবে সংখ্যাটা বের করি
+    const displayVal = digitsOnly === '' ? '' : enToBnDigits(digitsOnly);  // বাংলা সংখ্যায় দেখাই
+    if (activeEl.value !== displayVal) {
+      activeEl.value = displayVal;
+      // কার্সার শেষে রাখি যাতে টাইপ করতে অসুবিধা না হয়
+      const pos = displayVal.length;
+      activeEl.setSelectionRange && activeEl.setSelectionRange(pos, pos);
+    }
+  }
+
+  const b = parseInt(bnToEnDigits(bEl ? bEl.value : '0')) || 0;
+  const g = parseInt(bnToEnDigits(gEl ? gEl.value : '0')) || 0;
 
   ipemisData[year][cls] = { b, g };
   if (tEl) tEl.textContent = bn(b + g);
@@ -3321,16 +3337,16 @@ function renderIPEMIS() {
       <tr style="border-bottom:1px solid var(--border); background:${bg};">
         <td style="padding:11px 18px; font-weight:700; color:var(--text); font-size:14px;">${label}</td>
         <td style="padding:8px 12px; text-align:center;">
-          <input id="ip-b-${cls}" type="number" min="0" value="${d.b}"
+          <input id="ip-b-${cls}" type="text" inputmode="numeric" pattern="[০-৯0-9]*" value="${bn(d.b)}"
             oninput="ipemisOnInput('${cls}','b')"
-            style="width:80px; padding:7px 10px; border:2px solid #93c5fd; border-radius:8px; font-size:15px; font-weight:700; text-align:center; font-family:var(--font-en); color:#1d4ed8; background:#eff6ff; outline:none; transition:border-color .2s;"
+            style="width:80px; padding:7px 10px; border:2px solid #93c5fd; border-radius:8px; font-size:15px; font-weight:700; text-align:center; font-family:var(--font-bn); color:#1d4ed8; background:#eff6ff; outline:none; transition:border-color .2s;"
             onfocus="this.style.borderColor='#3b82f6'"
             onblur="this.style.borderColor='#93c5fd'">
         </td>
         <td style="padding:8px 12px; text-align:center;">
-          <input id="ip-g-${cls}" type="number" min="0" value="${d.g}"
+          <input id="ip-g-${cls}" type="text" inputmode="numeric" pattern="[০-৯0-9]*" value="${bn(d.g)}"
             oninput="ipemisOnInput('${cls}','g')"
-            style="width:80px; padding:7px 10px; border:2px solid #f9a8d4; border-radius:8px; font-size:15px; font-weight:700; text-align:center; font-family:var(--font-en); color:#be185d; background:#fdf2f8; outline:none; transition:border-color .2s;"
+            style="width:80px; padding:7px 10px; border:2px solid #f9a8d4; border-radius:8px; font-size:15px; font-weight:700; text-align:center; font-family:var(--font-bn); color:#be185d; background:#fdf2f8; outline:none; transition:border-color .2s;"
             onfocus="this.style.borderColor='#ec4899'"
             onblur="this.style.borderColor='#f9a8d4'">
         </td>
@@ -3354,9 +3370,9 @@ function printIPEMIS() {
     totalB += d.b; totalG += d.g;
     return `<tr>
       <td style="padding:10px 14px; border:1px solid #ddd; font-weight:600;">${label}</td>
-      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:700; color:#1d4ed8;">${d.b}</td>
-      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:700; color:#be185d;">${d.g}</td>
-      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:800;">${d.b + d.g}</td>
+      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:700; color:#1d4ed8;">${bn(d.b)}</td>
+      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:700; color:#be185d;">${bn(d.g)}</td>
+      <td style="padding:10px 14px; border:1px solid #ddd; text-align:center; font-weight:800;">${bn(d.b + d.g)}</td>
     </tr>`;
   }).join('');
 
@@ -3381,7 +3397,7 @@ function printIPEMIS() {
     <table>
       <thead><tr><th>শ্রেণি</th><th>👦 ছাত্র</th><th>👧 ছাত্রী</th><th>মোট</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td>সর্বমোট</td><td>${totalB}</td><td>${totalG}</td><td>${totalB+totalG}</td></tr></tfoot>
+      <tfoot><tr><td>সর্বমোট</td><td>${bn(totalB)}</td><td>${bn(totalG)}</td><td>${bn(totalB+totalG)}</td></tr></tfoot>
     </table>
     <script>window.onload=()=>{window.print();}<\/script>
   </body></html>`);
@@ -3480,9 +3496,24 @@ function bvInput(id) {
   return parseInt(raw) || 0;
 }
 
+// টাইপ করার সময় বক্সে যা লেখা হচ্ছে তা সাথে সাথে বাংলা সংখ্যায় দেখাই
+function bvNormalizeDisplay(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const digitsOnly = el.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[^\d]/g, '');
+  const displayVal = digitsOnly === '' ? '' : digitsOnly.replace(/[0-9]/g, c => '০১২৩৪৫৬৭৮৯'[c]);
+  if (el.value !== displayVal) {
+    el.value = displayVal;
+    const pos = displayVal.length;
+    el.setSelectionRange && el.setSelectionRange(pos, pos);
+  }
+}
+
 function bvOnInput(rowKey, field) {
   const year = bvGetYear();
   const d = bvGetRow(year, rowKey);
+  const fieldIdMap = { b: 'b', g: 'g', muslim: 'm', hindu: 'h', sp_b: 'sb', sp_g: 'sg' };
+  bvNormalizeDisplay(`bv-${fieldIdMap[field]}-${rowKey}`);
   const b = bvInput(`bv-b-${rowKey}`);
   const g = bvInput(`bv-g-${rowKey}`);
   const muslim = bvInput(`bv-m-${rowKey}`);
@@ -3636,9 +3667,9 @@ function printBidyaloy() {
     totB+=d.b; totG+=d.g; totM+=d.muslim; totH+=d.hindu; totSpB+=d.sp_b; totSpG+=d.sp_g;
     rows += `<tr>
       <td>${label}</td>
-      <td>${d.b}</td><td>${d.g}</td><td>${d.b+d.g}</td>
-      <td>${d.muslim}</td><td>${d.hindu}</td>
-      <td>${d.sp_b}</td><td>${d.sp_g}</td><td>${d.sp_b+d.sp_g}</td>
+      <td>${bn(d.b)}</td><td>${bn(d.g)}</td><td>${bn(d.b+d.g)}</td>
+      <td>${bn(d.muslim)}</td><td>${bn(d.hindu)}</td>
+      <td>${bn(d.sp_b)}</td><td>${bn(d.sp_g)}</td><td>${bn(d.sp_b+d.sp_g)}</td>
     </tr>`;
   });
 
@@ -3713,14 +3744,14 @@ tbody tr:nth-child(even):hover td { background: #eff6ff !important; }
       <tfoot>
         <tr class="total-row">
           <td>মোট</td>
-          <td>${totB}</td><td>${totG}</td><td>${totB+totG}</td>
-          <td>${totM}</td><td>${totH}</td>
-          <td>${totSpB}</td><td>${totSpG}</td><td>${totSpB+totSpG}</td>
+          <td>${bn(totB)}</td><td>${bn(totG)}</td><td>${bn(totB+totG)}</td>
+          <td>${bn(totM)}</td><td>${bn(totH)}</td>
+          <td>${bn(totSpB)}</td><td>${bn(totSpG)}</td><td>${bn(totSpB+totSpG)}</td>
         </tr>
         <tr class="grand-row">
           <td>সর্বমোট</td>
           <td colspan="5" style="color:#94a3b8;">—</td>
-          <td>${totSpB}</td><td>${totSpG}</td><td>${totSpB+totSpG}</td>
+          <td>${bn(totSpB)}</td><td>${bn(totSpG)}</td><td>${bn(totSpB+totSpG)}</td>
         </tr>
       </tfoot>
     </table>
